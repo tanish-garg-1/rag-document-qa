@@ -1,0 +1,7 @@
+rag_proj_env/
+__pycache__/
+*.pyc
+*.pyo
+.git/
+*.md
+test_*.py

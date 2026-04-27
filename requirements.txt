@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+python-multipart
+python-dotenv
+pymupdf
+python-docx
+Pillow
+langchain
+langchain-community
+faiss-cpu
+google-generativeai
+groq
+streamlit
+requests
+google-genai

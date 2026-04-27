@@ -1,0 +1,30 @@
+# Virtual environment
+rag_proj_env/
+
+# Environment variables (NEVER commit API keys!)
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# FAISS index (too large, regenerate on deploy)
+data/faiss_index/
+
+# Uploaded files (user data)
+data/uploads/
+
+# Test files
+test_*.py
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log

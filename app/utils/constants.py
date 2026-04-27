@@ -1,0 +1,33 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# API Keys
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+# Paths
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+UPLOAD_DIR = os.path.join(BASE_DIR, "data", "uploads")
+FAISS_INDEX_DIR = os.path.join(BASE_DIR, "data", "faiss_index")
+
+# Chunking
+CHUNK_SIZE = 500
+CHUNK_OVERLAP = 50
+
+# Retrieval
+MMR_K = 4
+MMR_LAMBDA = 0.5
+
+# Memory
+MAX_MEMORY_MESSAGES = 20
+INFERENCE_MEMORY_MESSAGES = 8
+
+# Models
+GEMINI_EMBEDDING_MODEL = "models/gemini-embedding-2"
+GEMINI_VISION_MODEL = "gemini-2.5-flash-lite"
+GROQ_MODEL = "llama-3.3-70b-versatile"
+
+# Embedding dimension for text-embedding-004
+EMBEDDING_DIM = 3072
