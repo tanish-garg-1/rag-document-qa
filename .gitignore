@@ -15,8 +15,8 @@ data/faiss_index/
 # Uploaded files (user data)
 data/uploads/
 
-# Test files
-test_*.py
+# Standalone test scripts at root level (not in tests/)
+/test_*.py
 
 # OS files
 .DS_Store
