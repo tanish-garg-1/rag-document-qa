@@ -19,8 +19,8 @@ CHUNK_SIZE = 500
 CHUNK_OVERLAP = 50
 
 # Retrieval
-MMR_K = 4
-MMR_LAMBDA = 0.5
+MMR_K = 6          # chunks per query (coverage pass may add more for missing sources)
+MMR_LAMBDA = 0.6   # slightly more relevance-weighted (was 0.5)
 
 # Memory
 MAX_MEMORY_MESSAGES = 20

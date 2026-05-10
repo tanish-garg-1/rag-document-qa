@@ -1,5 +1,6 @@
 import os
 import json
+import hashlib
 import logging
 import numpy as np
 import faiss
@@ -9,8 +10,9 @@ from app.utils.constants import FAISS_INDEX_DIR, EMBEDDING_DIM
 
 logger = logging.getLogger(__name__)
 
-INDEX_FILE = os.path.join(FAISS_INDEX_DIR, "index.faiss")
+INDEX_FILE    = os.path.join(FAISS_INDEX_DIR, "index.faiss")
 METADATA_FILE = os.path.join(FAISS_INDEX_DIR, "metadata.json")
+HASHES_FILE   = os.path.join(FAISS_INDEX_DIR, "hashes.json")
 
 
 def _load_or_create_index() -> faiss.IndexFlatIP:
@@ -30,6 +32,40 @@ def _load_metadata() -> List[Dict[str, Any]]:
         with open(METADATA_FILE, "r") as f:
             return json.load(f)
     return []
+
+
+def _load_hashes() -> set:
+    """Load the set of already-indexed content hashes."""
+    if os.path.exists(HASHES_FILE):
+        with open(HASHES_FILE, "r") as f:
+            return set(json.load(f))
+    return set()
+
+
+def _save_hashes(hashes: set):
+    """Atomically save content hashes to disk."""
+    os.makedirs(FAISS_INDEX_DIR, exist_ok=True)
+    tmp_path = HASHES_FILE + ".tmp"
+    with open(tmp_path, "w") as f:
+        json.dump(list(hashes), f)
+    os.replace(tmp_path, HASHES_FILE)
+
+
+def compute_file_hash(file_bytes: bytes) -> str:
+    """Return SHA-256 hex digest of raw file bytes."""
+    return hashlib.sha256(file_bytes).hexdigest()
+
+
+def is_content_indexed(file_hash: str) -> bool:
+    """Return True if this file's content is already in the index."""
+    return file_hash in _load_hashes()
+
+
+def mark_content_indexed(file_hash: str):
+    """Record a hash so the same content won't be indexed twice."""
+    hashes = _load_hashes()
+    hashes.add(file_hash)
+    _save_hashes(hashes)
 
 
 def _save_index(index: faiss.IndexFlatIP):
@@ -101,6 +137,51 @@ def search_similar(query_embedding: List[float], k: int = 10) -> List[Dict[str, 
         })
 
     return results
+
+
+def get_all_chunks() -> List[Dict[str, Any]]:
+    """
+    Return every chunk in the index with its embedding.
+    Used to guarantee per-source coverage during retrieval.
+    """
+    index = _load_or_create_index()
+    metadata = _load_metadata()
+
+    if index.ntotal == 0:
+        return []
+
+    results = []
+    for idx, entry in enumerate(metadata):
+        try:
+            embedding = index.reconstruct(idx).tolist()
+        except Exception:
+            embedding = None
+        results.append({
+            "content": entry["content"],
+            "metadata": entry["metadata"],
+            "score": 0.0,
+            "embedding": embedding,
+        })
+    return results
+
+
+def get_unique_sources() -> List[str]:
+    """Return sorted list of unique source filenames in the index."""
+    import re
+    _UUID_PREFIX = re.compile(
+        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_',
+        re.IGNORECASE
+    )
+    metadata = _load_metadata()
+    seen = set()
+    sources = []
+    for entry in metadata:
+        raw = entry.get("metadata", {}).get("source", "unknown")
+        clean = _UUID_PREFIX.sub("", raw)
+        if clean not in seen:
+            seen.add(clean)
+            sources.append(clean)
+    return sorted(sources)
 
 
 def get_index_stats() -> Dict[str, Any]:

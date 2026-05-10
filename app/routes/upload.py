@@ -8,7 +8,13 @@ from app.utils.file_utils import save_uploaded_file, is_supported_file
 from app.services.document_loader import load_document
 from app.services.chunking import chunk_documents
 from app.services.embeddings import embed_texts
-from app.services.vector_store import add_chunks_to_store
+from app.services.vector_store import (
+    add_chunks_to_store,
+    compute_file_hash,
+    is_content_indexed,
+    mark_content_indexed,
+)
+from app.services.llm import generate_document_summary
 from app.utils.constants import MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB
 
 logger = logging.getLogger(__name__)
@@ -46,6 +52,17 @@ async def upload_files(files: List[UploadFile] = File(...)):
                 })
                 continue
 
+            # Duplicate-content check (same bytes already in index)
+            file_hash = compute_file_hash(file_bytes)
+            if is_content_indexed(file_hash):
+                results.append({
+                    "filename": filename,
+                    "status": "duplicate",
+                    "reason": "Identical content already indexed — skipped."
+                })
+                logger.info(f"Skipped duplicate file: {filename}")
+                continue
+
             file_path = save_uploaded_file(file_bytes, filename)
             logger.info(f"File saved: {file_path}")
 
@@ -69,12 +86,33 @@ async def upload_files(files: List[UploadFile] = File(...)):
                 })
                 continue
 
+            # Generate a document-level summary using Groq and prepend it
+            # as a high-priority summary chunk so "describe this file" queries
+            # always have a complete, structured description to draw from.
+            full_text = "\n\n".join(d.get("content", "") for d in documents)
+            summary_text = generate_document_summary(filename, full_text)
+            if summary_text:
+                import uuid as _uuid
+                summary_chunk = {
+                    "content": summary_text,
+                    "metadata": {
+                        "source": filename,
+                        "page": 0,           # page 0 = document-level summary
+                        "chunk_id": str(_uuid.uuid4()),
+                        "type": "summary"    # marks this as a priority chunk
+                    }
+                }
+                chunks = [summary_chunk] + chunks  # summary first
+
             # Embed chunks
             texts = [c["content"] for c in chunks]
             embeddings = embed_texts(texts)
 
             # Store in FAISS
             add_chunks_to_store(chunks, embeddings)
+
+            # Record hash so re-upload of same content is skipped
+            mark_content_indexed(file_hash)
 
             results.append({
                 "filename": filename,
@@ -106,7 +144,7 @@ def clear_index():
     from app.utils.file_utils import ensure_directories
 
     try:
-        # Delete all files in faiss_index folder
+        # Delete all files in faiss_index folder (index, metadata, hashes)
         if os.path.exists(FAISS_INDEX_DIR):
             shutil.rmtree(FAISS_INDEX_DIR)
 
