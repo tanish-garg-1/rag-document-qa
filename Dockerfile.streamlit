@@ -6,7 +6,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY frontend/ ./frontend/
-COPY .env .
+# Do NOT copy .env — use docker-compose env_file instead
 
 EXPOSE 8501
 

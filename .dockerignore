@@ -5,3 +5,6 @@ __pycache__/
 .git/
 *.md
 test_*.py
+.env
+.env.*
+!.env.example
