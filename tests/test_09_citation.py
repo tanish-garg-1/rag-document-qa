@@ -118,7 +118,7 @@ dup_chunks = [
 ]
 try:
     citations = generate_citations(dup_chunks)
-    print(f"  4 chunks (3 duplicates) → {len(citations)} citation(s)")
+    print(f"  4 chunks (3 duplicates) -> {len(citations)} citation(s)")
     for c in citations:
         print(f"    '{c}'")
     if len(citations) == 2:
@@ -139,7 +139,7 @@ test_citations = [
 ]
 try:
     block = format_citations_block(test_citations)
-    print(f"  Formatted block:\n{block}")
+    print(f"  Formatted block:\n{block}".encode("ascii", "replace").decode())
 
     if "Sources" in block or "sources" in block.lower():
         print("  [PASS] 'Sources' header present")

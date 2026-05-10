@@ -12,10 +12,9 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project files
+# Copy project files (do NOT copy .env — use docker-compose env_file instead)
 COPY app/ ./app/
 COPY data/ ./data/
-COPY .env .
 
 # Create necessary directories
 RUN mkdir -p data/uploads data/faiss_index

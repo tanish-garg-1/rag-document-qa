@@ -115,9 +115,9 @@ try:
     if response.status_code == 200:
         text = response.text
         print(f"  Response length: {len(text)} chars")
-        print(f"  Response preview:\n  {'—'*40}")
-        print(f"  {text[:500]}")
-        print(f"  {'—'*40}")
+        print(f"  Response preview:\n  {'='*40}")
+        print(f"  {text[:500].encode('ascii', 'replace').decode()}")
+        print(f"  {'='*40}")
 
         if text.strip():
             print("  [PASS] Got non-empty response")

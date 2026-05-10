@@ -9,6 +9,7 @@ from app.services.document_loader import load_document
 from app.services.chunking import chunk_documents
 from app.services.embeddings import embed_texts
 from app.services.vector_store import add_chunks_to_store
+from app.utils.constants import MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB
 
 logger = logging.getLogger(__name__)
 
@@ -35,13 +36,21 @@ async def upload_files(files: List[UploadFile] = File(...)):
             continue
 
         try:
-            # Save file to disk
+            # Read file and enforce size limit
             file_bytes = await file.read()
+            if len(file_bytes) > MAX_UPLOAD_SIZE_BYTES:
+                results.append({
+                    "filename": filename,
+                    "status": "failed",
+                    "reason": f"File too large. Max size is {MAX_UPLOAD_SIZE_MB} MB."
+                })
+                continue
+
             file_path = save_uploaded_file(file_bytes, filename)
             logger.info(f"File saved: {file_path}")
 
-            # Load and extract content
-            documents = load_document(file_path)
+            # Load and extract content (pass original filename so metadata is clean)
+            documents = load_document(file_path, original_filename=filename)
             if not documents:
                 results.append({
                     "filename": filename,

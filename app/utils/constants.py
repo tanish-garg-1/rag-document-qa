@@ -1,7 +1,9 @@
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
-load_dotenv()
+# find_dotenv() walks up the directory tree until it finds a .env file
+# This works whether running from the worktree, the project root, or Docker
+load_dotenv(find_dotenv(usecwd=True) or find_dotenv())
 
 # API Keys
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -31,3 +33,7 @@ GROQ_MODEL = "llama-3.3-70b-versatile"
 
 # Embedding dimension for text-embedding-004
 EMBEDDING_DIM = 3072
+
+# Upload limits
+MAX_UPLOAD_SIZE_MB = 50
+MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024

@@ -107,7 +107,7 @@ multi_docs = [
 ]
 try:
     chunks = chunk_documents(multi_docs)
-    print(f"  3 documents → {len(chunks)} total chunks")
+    print(f"  3 documents -> {len(chunks)} total chunks")
 
     sources_seen = {}
     for c in chunks:

@@ -46,12 +46,12 @@ def describe_image_with_gemini(image_bytes: bytes, mime_type: str = "image/png")
         raise
 
 
-def load_pdf(file_path: str) -> List[Dict[str, Any]]:
+def load_pdf(file_path: str, original_filename: str = None) -> List[Dict[str, Any]]:
     """Extract text and images from PDF."""
     docs = []
     try:
         pdf = fitz.open(file_path)
-        filename = os.path.basename(file_path)
+        filename = original_filename or os.path.basename(file_path)
 
         for page_num, page in enumerate(pdf, start=1):
             # Extract text
@@ -91,13 +91,16 @@ def load_pdf(file_path: str) -> List[Dict[str, Any]]:
     return docs
 
 
-def load_docx(file_path: str) -> List[Dict[str, Any]]:
+def load_docx(file_path: str, original_filename: str = None) -> List[Dict[str, Any]]:
     """Extract text from DOCX."""
     docs = []
     try:
-        filename = os.path.basename(file_path)
+        filename = original_filename or os.path.basename(file_path)
         doc = Document(file_path)
         full_text = "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
+        if not full_text.strip():
+            logger.warning(f"DOCX file is empty or has no text: {filename}")
+            return docs
         docs.append({
             "content": full_text,
             "metadata": {
@@ -112,13 +115,16 @@ def load_docx(file_path: str) -> List[Dict[str, Any]]:
     return docs
 
 
-def load_txt(file_path: str) -> List[Dict[str, Any]]:
+def load_txt(file_path: str, original_filename: str = None) -> List[Dict[str, Any]]:
     """Read raw text file."""
     docs = []
     try:
-        filename = os.path.basename(file_path)
+        filename = original_filename or os.path.basename(file_path)
         with open(file_path, "r", encoding="utf-8") as f:
             text = f.read().strip()
+        if not text:
+            logger.warning(f"TXT file is empty: {filename}")
+            return docs
         docs.append({
             "content": text,
             "metadata": {
@@ -133,11 +139,11 @@ def load_txt(file_path: str) -> List[Dict[str, Any]]:
     return docs
 
 
-def load_image(file_path: str) -> List[Dict[str, Any]]:
+def load_image(file_path: str, original_filename: str = None) -> List[Dict[str, Any]]:
     """Process image file using Gemini Vision."""
     docs = []
     try:
-        filename = os.path.basename(file_path)
+        filename = original_filename or os.path.basename(file_path)
         ext = get_file_extension(file_path)
         mime_map = {
             "png": "image/png",
@@ -165,17 +171,17 @@ def load_image(file_path: str) -> List[Dict[str, Any]]:
     return docs
 
 
-def load_document(file_path: str) -> List[Dict[str, Any]]:
+def load_document(file_path: str, original_filename: str = None) -> List[Dict[str, Any]]:
     """Route file to correct loader based on extension."""
-    ext = get_file_extension(file_path)
+    ext = get_file_extension(original_filename or file_path)
     if ext == "pdf":
-        return load_pdf(file_path)
+        return load_pdf(file_path, original_filename)
     elif ext == "docx":
-        return load_docx(file_path)
+        return load_docx(file_path, original_filename)
     elif ext == "txt":
-        return load_txt(file_path)
+        return load_txt(file_path, original_filename)
     elif ext in {"png", "jpg", "jpeg", "webp"}:
-        return load_image(file_path)
+        return load_image(file_path, original_filename)
     else:
         logger.warning(f"Unsupported file type: {ext}")
         return []

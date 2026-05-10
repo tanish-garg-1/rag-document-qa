@@ -40,10 +40,19 @@ try:
     with open(retriever_path) as f:
         retriever_src = f.read()
 
-    has_reembed = "embed_texts" in retriever_src
+    # Check if embed_texts is called as PRIMARY path (not just as fallback)
+    # Fixed code uses pre-retrieved embeddings; fallback only if missing
+    has_embedding_key_check = "c.get(\"embedding\")" in retriever_src or "c.get('embedding')" in retriever_src
+    has_reembed_primary = "embed_texts" in retriever_src and not has_embedding_key_check
     lines = [l.strip() for l in retriever_src.split("\n") if "embed_texts" in l]
-    detail = f"embed_texts() called in retriever.py: {lines}" if has_reembed else "embed_texts() NOT called in mmr_rerank"
-    check(1, "MMR Re-embedding (API waste)", "HIGH", not has_reembed, detail)
+    if has_embedding_key_check:
+        detail = "embed_texts() only in fallback path — pre-retrieved embeddings used by default"
+        check(1, "MMR Re-embedding (API waste)", "HIGH", True, detail)
+    elif "embed_texts" in retriever_src:
+        detail = f"embed_texts() called as primary path in retriever.py: {lines}"
+        check(1, "MMR Re-embedding (API waste)", "HIGH", False, detail)
+    else:
+        check(1, "MMR Re-embedding (API waste)", "HIGH", True, "embed_texts() NOT called in mmr_rerank")
 except Exception as e:
     check(1, "MMR Re-embedding (API waste)", "HIGH", False, f"Could not check: {e}")
 
@@ -111,8 +120,8 @@ try:
         if "try:" in line:
             in_try_block = True
         if in_try_block and ("generate_content" in line or "gemini" in line.lower()):
-            # Check if followed by except within reasonable range
-            nearby = "\n".join(lines[i:min(i+10, len(lines))])
+            # Check if followed by except within reasonable range (30 lines for multi-line calls)
+            nearby = "\n".join(lines[i:min(i+30, len(lines))])
             if "except" in nearby:
                 has_vision_error_handling = True
                 break
@@ -353,21 +362,21 @@ print(f"    MEDIUM severity:  {len(medium)}")
 print(f"    LOW severity:     {len(low)}")
 
 if critical:
-    print(f"\n{'─'*60}")
+    print(f"\n{'-'*60}")
     print("HIGH SEVERITY — FIX FIRST:")
     for i in critical:
         print(f"  #{i[0]:02d}: {i[1]}")
         print(f"        {i[4]}")
 
 if medium:
-    print(f"\n{'─'*60}")
+    print(f"\n{'-'*60}")
     print("MEDIUM SEVERITY — FIX NEXT:")
     for i in medium:
         print(f"  #{i[0]:02d}: {i[1]}")
         print(f"        {i[4]}")
 
 if low:
-    print(f"\n{'─'*60}")
+    print(f"\n{'-'*60}")
     print("LOW SEVERITY — FIX WHEN TIME ALLOWS:")
     for i in low:
         print(f"  #{i[0]:02d}: {i[1]}")

@@ -1,6 +1,6 @@
 """
 TEST 19: FULL END-TO-END PIPELINE
-Tests the complete flow: upload → index → query → stream → citations.
+Tests the complete flow: upload -> index -> query -> stream -> citations.
 REQUIRES both GEMINI_API_KEY and GROQ_API_KEY.
 Run: python tests/test_19_full_pipeline.py
 """
@@ -161,7 +161,7 @@ for question, expected_terms in queries:
     if response.status_code == 200:
         answer = response.text
         print(f"  Time: {elapsed:.2f}s, Length: {len(answer)} chars")
-        print(f"  Answer preview: '{answer[:200]}'")
+        print(f"  Answer preview: '{answer[:200].encode('ascii', 'replace').decode()}'")
 
         # Check expected terms
         found_terms = [t for t in expected_terms if t.lower() in answer.lower()]
@@ -195,7 +195,7 @@ elapsed = time.time() - t0
 if response.status_code == 200:
     answer = response.text
     print(f"  Time: {elapsed:.2f}s")
-    print(f"  Answer: '{answer[:300]}'")
+    print(f"  Answer: '{answer[:300].encode('ascii', 'replace').decode()}'")
     if answer.strip():
         print("  [PASS] Follow-up answered")
     else:

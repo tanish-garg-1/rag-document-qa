@@ -8,8 +8,7 @@ Pillow
 langchain
 langchain-community
 faiss-cpu
-google-generativeai
+google-genai
 groq
 streamlit
 requests
-google-genai

@@ -32,10 +32,15 @@ def mmr_rerank(
             return 0.0
         return float(np.dot(a, b) / denom)
 
-    # Get embeddings for all candidates by re-embedding their content
-    from app.services.embeddings import embed_texts
-    contents = [c["content"] for c in candidates]
-    candidate_embeddings = embed_texts(contents)
+    # Use pre-retrieved embeddings from FAISS (avoids wasteful API re-embedding).
+    # Fall back to re-embedding only if embeddings are missing.
+    if all(c.get("embedding") is not None for c in candidates):
+        candidate_embeddings = [c["embedding"] for c in candidates]
+    else:
+        logger.warning("Candidate embeddings missing — falling back to re-embedding via API.")
+        from app.services.embeddings import embed_texts
+        contents = [c["content"] for c in candidates]
+        candidate_embeddings = embed_texts(contents)
 
     selected = []
     selected_embeddings = []

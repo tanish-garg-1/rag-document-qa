@@ -1,5 +1,6 @@
 import logging
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.routes.upload import router as upload_router
 from app.routes.query import router as query_router
 
@@ -15,6 +16,15 @@ app = FastAPI(
     title="RAG Document QA System",
     description="Multimodal conversational RAG with FAISS, Gemini and Groq",
     version="1.0.0"
+)
+
+# Allow cross-origin requests (frontend on different port / domain)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],          # Restrict in production to your Streamlit origin
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(upload_router)

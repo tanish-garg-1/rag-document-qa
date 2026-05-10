@@ -63,7 +63,7 @@ print(f"  Input: {len(candidates)} candidates")
 print(f"  Query embedding shape: {len(query_emb)}")
 
 try:
-    selected = mmr_rerank(candidates, query_emb, k=MMR_K)
+    selected = mmr_rerank(query_emb, candidates, k=MMR_K)
     print(f"  MMR selected: {len(selected)} chunks")
     if len(selected) == MMR_K:
         print(f"  [PASS] Correct number of results returned: {MMR_K}")
@@ -95,8 +95,8 @@ for i in range(6):
     })
 
 try:
-    selected = mmr_rerank(similar_candidates, query_emb, k=4)
-    print(f"  6 highly-similar candidates → {len(selected)} selected")
+    selected = mmr_rerank(query_emb, similar_candidates, k=4)
+    print(f"  6 highly-similar candidates -> {len(selected)} selected")
     print(f"  [INFO] MMR should still select k items even with similar content")
     if len(selected) <= min(4, len(similar_candidates)):
         print(f"  [PASS] Returns at most min(k, candidates) results")
@@ -117,8 +117,8 @@ small_candidates = [
     for i in range(2)
 ]
 try:
-    selected = mmr_rerank(small_candidates, query_emb, k=10)
-    print(f"  k=10, candidates=2 → {len(selected)} selected")
+    selected = mmr_rerank(query_emb, small_candidates, k=10)
+    print(f"  k=10, candidates=2 -> {len(selected)} selected")
     if len(selected) <= 2:
         print(f"  [PASS] Returns at most available candidates")
     else:
@@ -129,8 +129,8 @@ except Exception as e:
 # --- 6. MMR with empty candidates ---
 print("\n--- MMR empty candidates ---")
 try:
-    selected = mmr_rerank([], query_emb, k=4)
-    print(f"  Empty candidates → {len(selected)} selected")
+    selected = mmr_rerank(query_emb, [], k=4)
+    print(f"  Empty candidates -> {len(selected)} selected")
     if len(selected) == 0:
         print("  [PASS] Empty input returns empty output")
     else:
@@ -177,9 +177,9 @@ except Exception as e:
 # --- 8. MMR lambda sensitivity ---
 print("\n--- MMR Lambda Sensitivity ---")
 print(f"  Current lambda = {MMR_LAMBDA}")
-print(f"  lambda=1.0 → pure relevance (no diversity)")
-print(f"  lambda=0.0 → pure diversity (no relevance)")
-print(f"  lambda=0.5 → balanced (current setting)")
+print(f"  lambda=1.0 -> pure relevance (no diversity)")
+print(f"  lambda=0.0 -> pure diversity (no relevance)")
+print(f"  lambda=0.5 -> balanced (current setting)")
 print(f"  [INFO] At lambda=0.5, relevance and diversity weighted equally")
 
 print("\n" + "=" * 60)

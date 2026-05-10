@@ -225,7 +225,7 @@ try:
     clear_memory()
     add_message("user", "")
     size = get_memory_size()
-    print(f"  add_message('user', '') → size: {size}")
+    print(f"  add_message('user', '') -> size: {size}")
     if size == 1:
         print("  [INFO] Empty message accepted — may pollute history")
     elif size == 0:
@@ -236,7 +236,7 @@ try:
     hist = get_recent_history(10)
     if hist:
         role = hist[0].get("role")
-        print(f"  add_message('unknown_role', ...) → stored role: '{role}'")
+        print(f"  add_message('unknown_role', ...) -> stored role: '{role}'")
         print("  [INFO] Unknown role accepted — check if validation needed")
     clear_memory()
 except Exception as e:

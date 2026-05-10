@@ -65,9 +65,9 @@
 
 
 import logging
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from app.services.retriever import retrieve
 from app.services.llm import stream_answer, rewrite_query
@@ -82,10 +82,19 @@ router = APIRouter()
 class QueryRequest(BaseModel):
     query: str
 
+    @field_validator("query")
+    @classmethod
+    def query_must_not_be_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Query must not be empty.")
+        return v.strip()
+
 
 def response_generator(query: str):
-    """Generator that rewrites query, streams LLM response then appends citations."""
-
+    """Generator that rewrites query, streams LLM response then appends citations.
+    Uses try/except to handle client disconnects gracefully — any partial response
+    accumulated before disconnect is still saved to conversation memory.
+    """
     # Get chat history
     history = get_history_as_text()
 
@@ -103,11 +112,18 @@ def response_generator(query: str):
     # Step 3 — Store user message in memory
     add_message("user", query)
 
-    # Step 4 — Stream LLM response using original question
+    # Step 4 — Stream LLM response; save partial response on disconnect/cancel
     full_response = ""
-    for token in stream_answer(query, chunks, history):
-        full_response += token
-        yield token
+    try:
+        for token in stream_answer(query, chunks, history):
+            full_response += token
+            yield token
+    except GeneratorExit:
+        # Client disconnected — still persist whatever was streamed so far
+        logger.warning(f"Client disconnected mid-stream for query: '{query[:50]}'")
+        if full_response:
+            add_message("assistant", full_response + " [truncated]")
+        return
 
     # Step 5 — Generate and append citations
     citations = generate_citations(chunks)
@@ -115,7 +131,7 @@ def response_generator(query: str):
     if citation_block:
         yield citation_block
 
-    # Step 6 — Store assistant response in memory
+    # Step 6 — Store complete assistant response in memory
     add_message("assistant", full_response)
     logger.info(f"Query processed: {query[:50]}")
 

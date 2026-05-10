@@ -72,13 +72,13 @@ for filename, expected in test_cases:
     try:
         result = get_file_extension(filename)
         if result == expected:
-            print(f"  [PASS] '{filename}' → '{result}'")
+            print(f"  [PASS] '{filename}' -> '{result}'")
             ext_pass += 1
         else:
-            print(f"  [FAIL] '{filename}' → got '{result}', expected '{expected}'")
+            print(f"  [FAIL] '{filename}' -> got '{result}', expected '{expected}'")
             ext_fail += 1
     except Exception as e:
-        print(f"  [FAIL] '{filename}' → exception: {e}")
+        print(f"  [FAIL] '{filename}' -> exception: {e}")
         ext_fail += 1
 
 print(f"         Extension tests: {ext_pass} passed, {ext_fail} failed")
@@ -106,13 +106,13 @@ for filename, expected in supported_cases:
         status = "[PASS]" if result == expected else "[FAIL]"
         label = "supported" if result else "unsupported"
         if result == expected:
-            print(f"  [PASS] '{filename}' → {label}")
+            print(f"  [PASS] '{filename}' -> {label}")
             sup_pass += 1
         else:
-            print(f"  [FAIL] '{filename}' → got {label}, expected {'supported' if expected else 'unsupported'}")
+            print(f"  [FAIL] '{filename}' -> got {label}, expected {'supported' if expected else 'unsupported'}")
             sup_fail += 1
     except Exception as e:
-        print(f"  [FAIL] '{filename}' → exception: {e}")
+        print(f"  [FAIL] '{filename}' -> exception: {e}")
         sup_fail += 1
 
 print(f"         Supported-type tests: {sup_pass} passed, {sup_fail} failed")

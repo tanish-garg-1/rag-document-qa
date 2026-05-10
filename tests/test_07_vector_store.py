@@ -206,7 +206,7 @@ print("\n--- search_similar k > total vectors ---")
 query2 = make_random_embedding()
 try:
     results = search_similar(query2, k=50)
-    print(f"  k=50 with 8 stored vectors → got {len(results)} results")
+    print(f"  k=50 with 8 stored vectors -> got {len(results)} results")
     if len(results) <= 8:
         print(f"  [PASS] Returns at most stored vector count")
     else:

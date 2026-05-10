@@ -101,15 +101,11 @@ try:
     if docs:
         content = docs[0]["content"]
         print(f"  [PASS] Unicode TXT loaded, length: {len(content)}")
-        print(f"  Content: '{content[:80]}'")
-        if "你好" in content:
-            print(f"  [PASS] Chinese characters preserved")
-        else:
-            print(f"  [WARN] Chinese characters may have been lost")
-        if "Привет" in content:
-            print(f"  [PASS] Cyrillic characters preserved")
-        else:
-            print(f"  [WARN] Cyrillic may have been lost")
+        print(f"  Content: {ascii(content[:80])}")
+        chinese_ok = "你好" in content
+        cyrillic_ok = "Привет" in content
+        print(f"  [{'PASS' if chinese_ok else 'WARN'}] Chinese characters {'preserved' if chinese_ok else 'may have been lost'}")
+        print(f"  [{'PASS' if cyrillic_ok else 'WARN'}] Cyrillic characters {'preserved' if cyrillic_ok else 'may have been lost'}")
     else:
         print("  [FAIL] No docs from unicode text")
 except Exception as e:

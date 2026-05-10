@@ -1,6 +1,6 @@
 """
 TEST 14: RETRIEVER PIPELINE (End-to-End Retrieval)
-Tests the full retrieve() function: embed → FAISS search → MMR.
+Tests the full retrieve() function: embed -> FAISS search -> MMR.
 REQUIRES GEMINI_API_KEY and a populated FAISS index.
 Run: python tests/test_14_retriever_pipeline.py
 """
