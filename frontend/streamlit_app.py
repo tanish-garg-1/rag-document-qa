@@ -12,6 +12,21 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# ── Session state init (must come before any widget that reads it) ─────────
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "session_files" not in st.session_state:
+    st.session_state.session_files = []
+if "scope_initialized" not in st.session_state:
+    # First load — auto-restore scope from whatever is indexed.
+    # This prevents silent full-index queries after a page refresh.
+    try:
+        srcs = requests.get(f"{API_BASE}/sources", timeout=3).json().get("sources", [])
+        st.session_state.session_files = list(srcs)
+    except Exception:
+        pass
+    st.session_state.scope_initialized = True
+
 st.markdown("""
 <style>
 [data-testid="stSidebar"] {
@@ -61,16 +76,24 @@ with st.sidebar:
                     response = requests.post(f"{API_BASE}/upload", files=files)
                     results = response.json().get("results", [])
                     for r in results:
+                        fname = r["filename"]
                         if r["status"] == "success":
-                            st.success(f"✅ **{r['filename']}**  \n{r['chunks_added']} chunks indexed")
+                            st.success(f"✅ **{fname}**  \n{r['chunks_added']} chunks indexed")
+                            if fname not in st.session_state.session_files:
+                                st.session_state.session_files.append(fname)
+                        elif r["status"] == "duplicate":
+                            st.info(f"↩ **{fname}**  \nIdentical content already indexed — skipped.")
+                            # Still add to session scope — user wants to query this file
+                            if fname not in st.session_state.session_files:
+                                st.session_state.session_files.append(fname)
                         else:
-                            st.error(f"❌ **{r['filename']}**  \n{r.get('reason', 'Error')}")
+                            st.error(f"❌ **{fname}**  \n{r.get('reason', 'Error')}")
                 except Exception as e:
                     st.error(f"Upload failed: {e}")
 
     st.divider()
 
-    # Stats
+    # Stats + indexed files
     st.subheader("📊 Index Stats")
     if st.button("🔄 Refresh Stats", use_container_width=True):
         try:
@@ -78,7 +101,13 @@ with st.sidebar:
             col1, col2 = st.columns(2)
             col1.metric("Vectors", stats["total_vectors"])
             col2.metric("Chunks", stats["total_chunks"])
-            st.metric("Embedding Dim", stats["embedding_dim"])
+            srcs = requests.get(f"{API_BASE}/sources").json().get("sources", [])
+            if srcs:
+                st.caption(f"**{len(srcs)} file(s) in index:**")
+                for s in srcs:
+                    st.caption(f"• {s}")
+            else:
+                st.caption("No files indexed yet.")
         except Exception as e:
             st.error(f"Stats error: {e}")
 
@@ -108,6 +137,39 @@ with st.sidebar:
         except Exception as e:
             st.error(f"Error fetching memory: {e}")
 
+    # ── Active scope panel ─────────────────────────────────────────────────
+    st.divider()
+    st.subheader("🗂️ Active Scope")
+    if st.session_state.session_files:
+        st.caption(f"Queries search **only** these {len(st.session_state.session_files)} file(s):")
+        for f in st.session_state.session_files:
+            st.caption(f"• {f}")
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button("🔄 Reload", use_container_width=True, help="Re-fetch file list from index"):
+                try:
+                    srcs = requests.get(f"{API_BASE}/sources", timeout=3).json().get("sources", [])
+                    st.session_state.session_files = list(srcs)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {e}")
+        with col_b:
+            if st.button("🔓 Clear scope", use_container_width=True, help="Remove scope filter — queries will search ALL indexed files"):
+                st.session_state.session_files = []
+                st.rerun()
+    else:
+        st.warning("⚠️ No scope set — ALL indexed files will be searched.")
+        if st.button("📂 Load indexed files into scope", use_container_width=True):
+            try:
+                srcs = requests.get(f"{API_BASE}/sources", timeout=3).json().get("sources", [])
+                if srcs:
+                    st.session_state.session_files = list(srcs)
+                    st.rerun()
+                else:
+                    st.info("No files indexed yet — upload some first.")
+            except Exception as e:
+                st.error(f"Error: {e}")
+
     st.divider()
 
     # Vector Store
@@ -118,6 +180,7 @@ with st.sidebar:
             response = requests.post(f"{API_BASE}/clear")
             result = response.json()
             if result["status"] == "success":
+                st.session_state.session_files = []   # reset scope too
                 st.success("✅ Index cleared! Upload new documents to start fresh.")
             else:
                 st.error("Failed to clear index.")
@@ -129,14 +192,18 @@ st.header("💬 Ask Questions About Your Documents")
 st.caption("Upload documents in the sidebar first, then start chatting.")
 st.divider()
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-if not st.session_state.messages:
+if not st.session_state.session_files:
+    st.warning(
+        "⚠️ **No session scope active.** Queries will search ALL indexed files. "
+        "Upload files and click **Process & Index Files**, or use "
+        "**📂 Load indexed files into scope** in the sidebar."
+    )
+elif not st.session_state.messages:
     st.info("👈 Upload a document in the sidebar, then ask your first question below!")
 
 if prompt := st.chat_input("Ask a question about your documents..."):
@@ -148,9 +215,12 @@ if prompt := st.chat_input("Ask a question about your documents..."):
         full_response = ""
         placeholder = st.empty()
         try:
+            payload = {"query": prompt}
+            if st.session_state.session_files:
+                payload["filter_sources"] = st.session_state.session_files
             with requests.post(
                 f"{API_BASE}/query",
-                json={"query": prompt},
+                json=payload,
                 stream=True
             ) as r:
                 for chunk in r.iter_content(chunk_size=None, decode_unicode=True):

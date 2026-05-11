@@ -26,5 +26,8 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Claude Code session data (local only)
+.claude/
+
 # Logs
 *.log

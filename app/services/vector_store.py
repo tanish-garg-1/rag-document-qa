@@ -193,3 +193,22 @@ def get_index_stats() -> Dict[str, Any]:
         "total_chunks": len(metadata),
         "embedding_dim": EMBEDDING_DIM
     }
+
+
+def get_indexed_sources() -> List[str]:
+    """Return sorted list of unique source filenames currently in the index."""
+    import re
+    _UUID_PREFIX = re.compile(
+        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_',
+        re.IGNORECASE
+    )
+    metadata = _load_metadata()
+    seen = set()
+    sources = []
+    for m in metadata:
+        raw = m.get("source", "")
+        clean = _UUID_PREFIX.sub("", raw)
+        if clean and clean not in seen:
+            seen.add(clean)
+            sources.append(clean)
+    return sorted(sources)

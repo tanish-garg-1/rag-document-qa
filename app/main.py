@@ -40,3 +40,10 @@ def root():
 def stats():
     from app.services.vector_store import get_index_stats
     return get_index_stats()
+
+
+@app.get("/sources")
+def sources():
+    """Return the list of unique source files currently indexed."""
+    from app.services.vector_store import get_indexed_sources
+    return {"sources": get_indexed_sources()}
