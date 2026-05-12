@@ -206,7 +206,7 @@ def get_indexed_sources() -> List[str]:
     seen = set()
     sources = []
     for m in metadata:
-        raw = m.get("source", "")
+        raw = m.get("metadata", {}).get("source", "")   # fix: was m.get("source")
         clean = _UUID_PREFIX.sub("", raw)
         if clean and clean not in seen:
             seen.add(clean)

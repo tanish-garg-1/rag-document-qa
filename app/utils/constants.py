@@ -29,7 +29,7 @@ INFERENCE_MEMORY_MESSAGES = 4   # was 8; reduced to keep history tokens ≤ ~600
 
 # Models
 GEMINI_EMBEDDING_MODEL = "models/gemini-embedding-2"
-GEMINI_VISION_MODEL = "gemini-2.5-flash-lite"
+GEMINI_VISION_MODEL = "gemini-2.5-flash"
 #GROQ_MODEL = "llama-3.3-70b-versatile"
 GROQ_MODEL = "llama-3.1-8b-instant"  # 500K tokens/day free tier
 
@@ -40,9 +40,11 @@ EMBEDDING_DIM = 3072
 MAX_UPLOAD_SIZE_MB = 50
 MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
-# LLM context limits (keeps total prompt under 6 000-token TPM cap for 8B model)
-MAX_CONTEXT_CHARS = 5_500        # ~1 375 tokens; leaves room for history + prompt overhead
-MAX_CHUNK_CHARS   = 500          # individual chunk content truncation
+# LLM context limits
+# llama-3.1-8b-instant has 128K context window; 12 000 chars ~ 3 000 tokens,
+# leaving plenty of room for the system prompt, history, and question.
+MAX_CONTEXT_CHARS = 12_000       # raised from 5 500 — was too tight for 3+ files
+MAX_CHUNK_CHARS   = 600          # slightly wider chunks for richer content
 
 # Coverage pass — minimum cosine similarity for a source to be force-added
 # Sources whose best chunk scores below this are unrelated to the query and

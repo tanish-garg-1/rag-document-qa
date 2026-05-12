@@ -144,19 +144,16 @@ with st.sidebar:
         st.caption(f"Queries search **only** these {len(st.session_state.session_files)} file(s):")
         for f in st.session_state.session_files:
             st.caption(f"• {f}")
-        col_a, col_b = st.columns(2)
-        with col_a:
-            if st.button("🔄 Reload", use_container_width=True, help="Re-fetch file list from index"):
-                try:
-                    srcs = requests.get(f"{API_BASE}/sources", timeout=3).json().get("sources", [])
-                    st.session_state.session_files = list(srcs)
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Error: {e}")
-        with col_b:
-            if st.button("🔓 Clear scope", use_container_width=True, help="Remove scope filter — queries will search ALL indexed files"):
-                st.session_state.session_files = []
+        if st.button("🔄 Reload scope from index", use_container_width=True):
+            try:
+                srcs = requests.get(f"{API_BASE}/sources", timeout=3).json().get("sources", [])
+                st.session_state.session_files = list(srcs)
                 st.rerun()
+            except Exception as e:
+                st.error(f"Error: {e}")
+        if st.button("🔓 Clear scope", use_container_width=True):
+            st.session_state.session_files = []
+            st.rerun()
     else:
         st.warning("⚠️ No scope set — ALL indexed files will be searched.")
         if st.button("📂 Load indexed files into scope", use_container_width=True):
@@ -169,6 +166,22 @@ with st.sidebar:
                     st.info("No files indexed yet — upload some first.")
             except Exception as e:
                 st.error(f"Error: {e}")
+
+    st.divider()
+
+    # Backend logs viewer
+    st.subheader("📜 Backend Logs")
+    if st.button("📋 View Recent Logs", use_container_width=True):
+        try:
+            logs = requests.get(f"{API_BASE}/logs?n=30", timeout=3).json().get("logs", [])
+            if logs:
+                # Highlight errors and warnings
+                log_text = "\n".join(logs)
+                st.code(log_text, language=None)
+            else:
+                st.info("No logs yet.")
+        except Exception as e:
+            st.error(f"Could not fetch logs: {e}")
 
     st.divider()
 

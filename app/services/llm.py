@@ -41,6 +41,7 @@ _ANALYTICAL_RE = re.compile(
 )
 
 def classify_query(question: str, history: str, has_documents: bool) -> str:
+    logger.debug(f"[LLM][classify] question='{question[:80]}', has_documents={has_documents}")
     """
     Use Groq to decide which answering mode to use.
 
@@ -59,10 +60,12 @@ def classify_query(question: str, history: str, has_documents: bool) -> str:
                          "Explain transformers", "What is AML?")
     """
     if not has_documents:
+        logger.debug(f"[LLM][classify] No documents — returning GENERAL")
         return MODE_GENERAL
 
     # Fast keyword pre-screen: if question clearly needs reasoning, skip LLM call
     if _ANALYTICAL_RE.search(question):
+        logger.debug(f"[LLM][classify] Keyword match → ANALYTICAL")
         logger.info("Query pre-classified as ANALYTICAL (keyword match)")
         return MODE_ANALYTICAL
 
@@ -125,10 +128,13 @@ Reply with EXACTLY one word — DOCUMENT, ANALYTICAL, or GENERAL:"""
         )
         mode = resp.choices[0].message.content.strip().upper()
         if mode not in (MODE_DOCUMENT, MODE_ANALYTICAL, MODE_GENERAL):
+            logger.debug(f"[LLM][classify] LLM returned unknown mode '{mode}' — defaulting to DOCUMENT")
             mode = MODE_DOCUMENT   # safe fallback
+        logger.debug(f"[LLM][classify] LLM classified as → {mode}")
         logger.info(f"Query classified as: {mode}")
         return mode
     except Exception as e:
+        logger.debug(f"[LLM][classify] ERROR: {e} — defaulting to DOCUMENT")
         logger.error(f"Query classification failed: {e}")
         return MODE_DOCUMENT
 
@@ -238,12 +244,16 @@ def format_context(chunks: List[Dict], summaries_first: bool = False) -> str:
     Summary chunks (page=0 / type=summary) are sorted first within each file.
     Uses OrderedDict so citation numbers match what citation.py generates.
 
-    Enforces two limits to stay within the LLM's token budget:
+    Enforces limits to stay within the LLM's token budget:
       - Each chunk's content is truncated to MAX_CHUNK_CHARS characters.
-      - Total context is capped at MAX_CONTEXT_CHARS; chunks are dropped
-        (least-relevant last, since they're added in relevance order) once
-        the budget is exhausted.
+      - Total context is capped at MAX_CONTEXT_CHARS.
+      - In describe-all mode (summaries_first=True): the budget is split equally
+        across all files so no single large file crowds out smaller ones.
+        The per-file cap scales automatically — 1 file gets ~20 chunks, 5 files
+        get ~4 each, 10 files get 2 each. Targeted queries have NO per-file cap.
     """
+    logger.debug(f"[LLM][format_context] {len(chunks)} chunks in, summaries_first={summaries_first}", flush=True)
+
     def _chunk_sort_key(c):
         meta = c.get("metadata", {})
         is_summary = (meta.get("type") == "summary" or meta.get("page") == 0)
@@ -261,17 +271,38 @@ def format_context(chunks: List[Dict], summaries_first: bool = False) -> str:
         content = chunk.get("content", "")
         # Truncate individual chunk to avoid a single huge chunk blowing budget
         if len(content) > MAX_CHUNK_CHARS:
-            content = content[:MAX_CHUNK_CHARS] + " …[truncated]"
+            content = content[:MAX_CHUNK_CHARS] + " ...[truncated]"
         grouped.setdefault(source, []).append((page, content))
+
+    # In describe-all mode, distribute the context budget equally across files.
+    # chunks_per_file scales dynamically:
+    #   1 file  → up to 20 chunks (practically unlimited for describe-all)
+    #   3 files → up to 6 chunks each
+    #   5 files → up to 4 chunks each
+    #   10 files → 2 chunks each (minimum floor)
+    # Targeted queries (summaries_first=False) have NO per-file cap — all
+    # relevant chunks for the specific question are included.
+    if summaries_first:
+        num_files = max(len(grouped), 1)
+        chars_per_file = MAX_CONTEXT_CHARS // num_files
+        chunks_per_file = max(2, chars_per_file // MAX_CHUNK_CHARS)
+        logger.debug(f"[LLM][format_context] describe-all: {num_files} files, cap={chunks_per_file} chunks/file", flush=True)
+        grouped = OrderedDict(
+            (src, entries[:chunks_per_file])
+            for src, entries in grouped.items()
+        )
 
     parts = []
     ref_num = 1
     total_chars = 0
+    logger.debug(f"[LLM][format_context] Files to format: {list(grouped.keys())}", flush=True)
     for source, entries in grouped.items():
+        logger.debug(f"[LLM][format_context]   '{source}' -> {len(entries)} chunk(s)", flush=True)
         file_parts = [f"--- File: {source} ---"]
         for page, content in entries:
             entry_text = f"[{ref_num}] Page {page}:\n{content}"
             if total_chars + len(entry_text) > MAX_CONTEXT_CHARS:
+                logger.debug(f"[LLM][format_context] Budget hit at [{ref_num}] ({total_chars}/{MAX_CONTEXT_CHARS} chars) -- dropping rest", flush=True)
                 logger.info(
                     f"Context budget reached at ref [{ref_num}] "
                     f"({total_chars}/{MAX_CONTEXT_CHARS} chars) — dropping remaining chunks."
@@ -285,6 +316,7 @@ def format_context(chunks: List[Dict], summaries_first: bool = False) -> str:
             ref_num += 1
         parts.append("\n".join(file_parts))
 
+    logger.debug(f"[LLM][format_context] Done: {ref_num-1} refs, {total_chars} chars total", flush=True)
     return "\n\n".join(parts)
 
 
@@ -302,8 +334,11 @@ def stream_answer(
     mode controls which prompt template and knowledge sources are used.
     Yields text chunks as they arrive.
     """
+    logger.debug(f"[LLM][stream_answer] question='{question[:80]}', mode={mode}, summaries_first={summaries_first}")
+    logger.debug(f"[LLM][stream_answer] {len(chunks)} chunks passed in")
     context = format_context(chunks, summaries_first=summaries_first)
     prompt = build_prompt(context, history, question, mode=mode)
+    logger.debug(f"[LLM][stream_answer] Prompt length: {len(prompt)} chars, context length: {len(context)} chars")
 
     try:
         stream = client.chat.completions.create(
@@ -314,14 +349,18 @@ def stream_answer(
             max_tokens=1024 if mode in (MODE_ANALYTICAL, MODE_GENERAL) else 768
         )
 
+        token_count = 0
         for chunk in stream:
             delta = chunk.choices[0].delta.content
             if delta:
+                token_count += 1
                 yield delta
 
+        logger.debug(f"[LLM][stream_answer] Streaming done — {token_count} tokens streamed")
         logger.info(f"Streaming complete (mode={mode}).")
 
     except Exception as e:
+        logger.debug(f"[LLM][stream_answer] ERROR: {e}")
         logger.error(f"Groq LLM error: {e}")
         yield f"Error generating response: {str(e)}"
 
@@ -387,13 +426,17 @@ def rewrite_query(question: str, history: str) -> str:
     returned unchanged — rewriting them causes the LLM to inject concepts
     from previous AI answers, polluting retrieval.
     """
+    logger.debug(f"[LLM][rewrite] question='{question}', history_len={len(history)}")
     if not history.strip():
+        logger.debug(f"[LLM][rewrite] No history — skipping rewrite")
         return question
 
     # Skip rewriting if the question is already self-contained
     word_count = len(question.split())
     has_ambiguous_ref = bool(_NEEDS_REWRITE_RE.search(question))
-    if word_count > 5 and not has_ambiguous_ref:
+    logger.debug(f"[LLM][rewrite] word_count={word_count}, has_ambiguous_ref={has_ambiguous_ref}")
+    if word_count >= 5 and not has_ambiguous_ref:
+        logger.debug(f"[LLM][rewrite] Self-contained — skipping rewrite")
         logger.info(f"Query rewrite skipped (self-contained, {word_count} words): '{question}'")
         return question
 
@@ -423,8 +466,10 @@ Rewritten Query:"""
             max_tokens=150
         )
         rewritten = response.choices[0].message.content.strip()
+        logger.debug(f"[LLM][rewrite] '{question}' → '{rewritten}'")
         logger.info(f"Query rewritten: '{question}' -> '{rewritten}'")
         return rewritten
     except Exception as e:
+        logger.debug(f"[LLM][rewrite] ERROR: {e} — using original")
         logger.error(f"Query rewriting failed: {e}")
         return question

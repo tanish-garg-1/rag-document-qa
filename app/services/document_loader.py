@@ -168,6 +168,7 @@ def load_image(file_path: str, original_filename: str = None) -> List[Dict[str, 
         logger.info(f"Image loaded: {filename}")
     except Exception as e:
         logger.error(f"Error loading image {file_path}: {e}")
+        raise   # bubble up so upload route shows the real error, not silent ✅
     return docs
 
 
