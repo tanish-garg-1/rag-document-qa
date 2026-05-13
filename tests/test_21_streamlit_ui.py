@@ -1,4 +1,4 @@
-"""
+﻿"""
 TEST 21: STREAMLIT FRONTEND AUDIT
 Tests the Streamlit app structure, logic, and API wiring WITHOUT
 needing a running browser or server.

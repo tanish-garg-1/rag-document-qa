@@ -1,4 +1,4 @@
-"""
+﻿"""
 TEST 22: DOCKER & DEPLOYMENT CONFIGURATION
 Tests Dockerfile, Dockerfile.streamlit, docker-compose.yml,
 .dockerignore, and .env.example for correctness and security.

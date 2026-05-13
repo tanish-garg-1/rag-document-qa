@@ -1,4 +1,4 @@
-"""
+﻿"""
 TEST 23: MEMORY PERSISTENCE (FILE-BASED)
 Tests that conversation memory survives across module reloads,
 enforces MAX_MEMORY_MESSAGES, handles corruption gracefully,
