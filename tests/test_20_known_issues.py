@@ -1,4 +1,4 @@
-"""
+﻿"""
 TEST 20: KNOWN ISSUES AUDIT
 Probes each known bug and architectural issue. Produces a clear pass/fail/warn
 for each one so you know exactly what to fix and in what order.
@@ -30,9 +30,9 @@ def check(issue_id, title, severity, passed, detail):
     print(f"{status} #{issue_id:02d} [{severity:8}] {title}")
     print(f"         {detail}")
 
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 # ISSUE 1: MMR Re-embedding inefficiency
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 print("\n--- Issue 1: MMR Re-embedding ---")
 try:
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -56,9 +56,9 @@ try:
 except Exception as e:
     check(1, "MMR Re-embedding (API waste)", "HIGH", False, f"Could not check: {e}")
 
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 # ISSUE 2: Conversation memory NOT persistent
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 print("\n--- Issue 2: Memory Persistence ---")
 try:
     memory_path = os.path.join(root, "app", "services", "memory.py")
@@ -79,9 +79,9 @@ try:
 except Exception as e:
     check(2, "Memory NOT persistent", "HIGH", False, f"Could not check: {e}")
 
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 # ISSUE 3: FAISS index-metadata desync risk
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 print("\n--- Issue 3: FAISS-Metadata Desync Risk ---")
 try:
     vs_path = os.path.join(root, "app", "services", "vector_store.py")
@@ -102,9 +102,9 @@ try:
 except Exception as e:
     check(3, "FAISS-metadata desync", "MEDIUM", False, f"Could not check: {e}")
 
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 # ISSUE 4: Image failures crash entire upload
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 print("\n--- Issue 4: Image Failure Crash ---")
 try:
     loader_path = os.path.join(root, "app", "services", "document_loader.py")
@@ -134,9 +134,9 @@ try:
 except Exception as e:
     check(4, "Image failure crash", "MEDIUM", False, f"Could not check: {e}")
 
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 # ISSUE 5: No rate limiting on endpoints
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 print("\n--- Issue 5: Rate Limiting ---")
 try:
     upload_path = os.path.join(root, "app", "routes", "upload.py")
@@ -158,9 +158,9 @@ try:
 except Exception as e:
     check(5, "Rate limiting", "LOW", False, f"Could not check: {e}")
 
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 # ISSUE 6: FAISS L2 distance vs cosine in MMR
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 print("\n--- Issue 6: FAISS L2 vs Cosine Mismatch ---")
 try:
     with open(vs_path) as f:
@@ -182,9 +182,9 @@ try:
 except Exception as e:
     check(6, "FAISS distance metric", "LOW", False, f"Could not check: {e}")
 
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 # ISSUE 7: No input validation on query endpoint
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 print("\n--- Issue 7: Query Input Validation ---")
 try:
     with open(query_path) as f:
@@ -203,9 +203,9 @@ try:
 except Exception as e:
     check(7, "Query validation", "MEDIUM", False, f"Could not check: {e}")
 
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 # ISSUE 8: No CORS headers
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 print("\n--- Issue 8: CORS Configuration ---")
 try:
     with open(main_path) as f:
@@ -218,9 +218,9 @@ try:
 except Exception as e:
     check(8, "CORS", "LOW", False, f"Could not check: {e}")
 
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 # ISSUE 9: Hardcoded model names (not configurable)
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 print("\n--- Issue 9: Hardcoded Model Names ---")
 try:
     constants_path = os.path.join(root, "app", "utils", "constants.py")
@@ -234,9 +234,9 @@ try:
 except Exception as e:
     check(9, "Hardcoded models", "LOW", False, f"Could not check: {e}")
 
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 # ISSUE 10: Streaming response not stored on disconnect
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 print("\n--- Issue 10: Streaming Disconnect Handling ---")
 try:
     with open(query_path) as f:
@@ -250,9 +250,9 @@ try:
 except Exception as e:
     check(10, "Streaming disconnect", "MEDIUM", False, f"Could not check: {e}")
 
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 # ISSUE 11: No chunking validation (empty chunks accepted)
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 print("\n--- Issue 11: Empty Chunk Validation ---")
 try:
     with open(upload_path) as f:
@@ -265,9 +265,9 @@ try:
 except Exception as e:
     check(11, "Chunk validation", "MEDIUM", False, f"Could not check: {e}")
 
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 # ISSUE 12: Dockerfile copies .env file (security risk)
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 print("\n--- Issue 12: Dockerfile .env copy ---")
 try:
     dockerfile_path = os.path.join(root, "Dockerfile")
@@ -281,9 +281,9 @@ try:
 except Exception as e:
     check(12, "Dockerfile .env", "MEDIUM", False, f"Could not check: {e}")
 
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 # ISSUE 13: No file size limit on upload
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 print("\n--- Issue 13: Upload File Size Limit ---")
 try:
     with open(upload_path) as f:
@@ -296,9 +296,9 @@ try:
 except Exception as e:
     check(13, "File size limit", "LOW", False, f"Could not check: {e}")
 
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 # ISSUE 14: Embeddings not batched (one API call per chunk)
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 print("\n--- Issue 14: Embedding Batching ---")
 try:
     embeddings_path = os.path.join(root, "app", "services", "embeddings.py")
@@ -314,9 +314,9 @@ try:
 except Exception as e:
     check(14, "Embedding batching", "MEDIUM", False, f"Could not check: {e}")
 
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 # ISSUE 15: Gemini SDK version (google-genai vs google-generativeai)
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 print("\n--- Issue 15: Gemini SDK version conflict ---")
 try:
     req_path = os.path.join(root, "requirements.txt")
@@ -341,9 +341,9 @@ try:
 except Exception as e:
     check(15, "Gemini SDK", "MEDIUM", False, f"Could not check: {e}")
 
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 # SUMMARY
-# ─────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------
 print("\n" + "=" * 60)
 print("ISSUE AUDIT SUMMARY")
 print("=" * 60)

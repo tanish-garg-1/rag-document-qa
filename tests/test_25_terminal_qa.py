@@ -1,4 +1,4 @@
-"""
+﻿"""
 TEST 25: INTERACTIVE TERMINAL Q&A
 Uploads all files from  files_for_test/  into the RAG system,
 then opens an interactive question-answering session in the terminal.
@@ -25,17 +25,17 @@ import io
 import time
 import shutil
 
-# ── path setup ────────────────────────────────────────────────────────────────
+# -- path setup ----------------------------------------------------------------
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
 FILES_DIR = os.path.join(ROOT, "files_for_test")
 
-# ── load .env ─────────────────────────────────────────────────────────────────
+# -- load .env -----------------------------------------------------------------
 from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv(usecwd=True) or find_dotenv())
 
-# ── check API keys ─────────────────────────────────────────────────────────────
+# -- check API keys -------------------------------------------------------------
 gemini_key = os.getenv("GEMINI_API_KEY")
 groq_key   = os.getenv("GROQ_API_KEY")
 
@@ -47,7 +47,7 @@ if not gemini_key or not groq_key:
 
 import re as _re
 
-# ── supported extensions ───────────────────────────────────────────────────────
+# -- supported extensions -------------------------------------------------------
 SUPPORTED = {".pdf", ".docx", ".txt", ".png", ".jpg", ".jpeg", ".webp"}
 
 # UUID prefix pattern: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx_
@@ -70,7 +70,7 @@ MIME_MAP = {
     ".webp": "image/webp",
 }
 
-# ── force UTF-8 output so tick/cross/emoji print on Windows ───────────────────
+# -- force UTF-8 output so tick/cross/emoji print on Windows -------------------
 if sys.platform == "win32":
     import ctypes
     try:
@@ -85,7 +85,7 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-# ── colour helpers ─────────────────────────────────────────────────────────────
+# -- colour helpers -------------------------------------------------------------
 def green(t):  return f"\033[92m{t}\033[0m"
 def yellow(t): return f"\033[93m{t}\033[0m"
 def cyan(t):   return f"\033[96m{t}\033[0m"
@@ -93,7 +93,7 @@ def red(t):    return f"\033[91m{t}\033[0m"
 def bold(t):   return f"\033[1m{t}\033[0m"
 def dim(t):    return f"\033[2m{t}\033[0m"
 
-# ── boot FastAPI in-process ────────────────────────────────────────────────────
+# -- boot FastAPI in-process ----------------------------------------------------
 print(bold("\n  RAG Terminal Q&A — booting..."))
 try:
     from fastapi.testclient import TestClient
@@ -104,7 +104,7 @@ except Exception as e:
     print(red(f"  [FAIL] Could not load app: {e}"))
     sys.exit(1)
 
-# ── helpers ────────────────────────────────────────────────────────────────────
+# -- helpers --------------------------------------------------------------------
 
 def list_test_files():
     """Return list of (filename, full_path) for supported files in files_for_test/."""
@@ -184,7 +184,7 @@ def upload_files():
 
             elif status == "duplicate":
                 dup_count += 1
-                print(f"  {yellow('↩')} {bold(dname)}")
+                print(f"  {yellow('<-')} {bold(dname)}")
                 print(dim(f"       Already indexed — skipped (identical content)"))
 
             else:
@@ -198,7 +198,7 @@ def upload_files():
             print(f"  {red('✘')} {bold(dname)}")
             print(dim(f"       Exception: {e}"))
 
-    # ── summary line ──────────────────────────────────────────────────────────
+    # -- summary line ----------------------------------------------------------
     total = success_count + fail_count + dup_count
     parts = []
     if success_count:
@@ -211,7 +211,7 @@ def upload_files():
     summary = f"  {total} file(s): " + "  •  ".join(parts)
     print(f"\n{summary}")
 
-    # ── index stats ───────────────────────────────────────────────────────────
+    # -- index stats -----------------------------------------------------------
     stats = client.get("/stats").json()
     print(f"  {cyan('Index:')} {stats['total_vectors']} vectors  •  "
           f"{stats['total_chunks']} chunks  •  dim={stats['embedding_dim']}")
@@ -290,7 +290,7 @@ def print_help():
     """)
 
 
-# ── banner ─────────────────────────────────────────────────────────────────────
+# -- banner ---------------------------------------------------------------------
 
 def print_banner():
     print("\n" + "=" * 60)
@@ -300,7 +300,7 @@ def print_banner():
     print_help()
 
 
-# ── main ───────────────────────────────────────────────────────────────────────
+# -- main -----------------------------------------------------------------------
 
 def main():
     print_banner()
@@ -326,7 +326,7 @@ def main():
         if not user_input:
             continue
 
-        # ── commands ───────────────────────────────────────────────────────────
+        # -- commands -----------------------------------------------------------
         cmd = user_input.lower()
 
         if cmd in ("/quit", "/exit", "/q"):
@@ -359,7 +359,7 @@ def main():
             print(yellow("  Re-uploading files (existing index kept)..."))
             upload_files()
 
-        # ── question ───────────────────────────────────────────────────────────
+        # -- question -----------------------------------------------------------
         else:
             ask_question(user_input)
 

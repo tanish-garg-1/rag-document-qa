@@ -1,32 +1,16 @@
-import sys
-import os
 import logging
 from collections import deque
-from logging.handlers import RotatingFileHandler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes.upload import router as upload_router
 from app.routes.query import router as query_router
 
-# ── Debug log file — readable with: Get-Content -Wait backend.log ─────────────
-_LOG_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backend.log")
-
-_fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-                          datefmt="%H:%M:%S")
-
-# File handler — writes everything to backend.log (max 2 MB, 1 backup)
-_file_handler = RotatingFileHandler(_LOG_FILE, maxBytes=2_000_000, backupCount=1,
-                                     encoding="utf-8")
-_file_handler.setFormatter(_fmt)
-_file_handler.setLevel(logging.DEBUG)
-
-# Stream handler — also try to print to stderr (more reliable than stdout under reload)
-_stream_handler = logging.StreamHandler(sys.stderr)
-_stream_handler.setFormatter(_fmt)
-_stream_handler.setLevel(logging.DEBUG)
-
-# Root logger picks up all app.* loggers
-logging.basicConfig(level=logging.DEBUG, handlers=[_file_handler, _stream_handler])
+# Basic logging setup
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 # ── In-memory log buffer (last 200 lines) — readable via /logs endpoint ───────
 class _BufferHandler(logging.Handler):
@@ -42,10 +26,26 @@ class _BufferHandler(logging.Handler):
 
 
 _buffer_handler = _BufferHandler()
-_buffer_handler.setFormatter(_fmt)
+_buffer_handler.setFormatter(
+    logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+                      datefmt="%H:%M:%S")
+)
 logging.getLogger().addHandler(_buffer_handler)
 
 logger = logging.getLogger(__name__)
+
+# ── Global debug state — updated by query pipeline, read via /debug-last ──────
+# This is the single source of truth for what happened in the last query.
+# Streamlit reads this after every response to show a live debug panel.
+_last_debug: dict = {}
+
+def set_debug(data: dict):
+    """Called by the query pipeline to record what happened."""
+    global _last_debug
+    _last_debug = data
+
+def get_debug() -> dict:
+    return _last_debug
 
 app = FastAPI(
     title="RAG Document QA System",
@@ -53,10 +53,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Allow cross-origin requests (frontend on different port / domain)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],          # Restrict in production to your Streamlit origin
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -79,21 +78,24 @@ def stats():
 
 @app.get("/sources")
 def sources():
-    """Return the list of unique source files currently indexed."""
     from app.services.vector_store import get_indexed_sources
     return {"sources": get_indexed_sources()}
 
 
+@app.get("/debug-last")
+def debug_last():
+    """Return debug info from the most recent query — shown in Streamlit panel."""
+    return get_debug()
+
+
 @app.get("/logs")
 def get_logs(n: int = 50):
-    """Return the last n backend log lines (for in-app debugging)."""
     lines = _buffer_handler.get_logs()
     return {"logs": lines[-n:]}
 
 
 @app.get("/list-models")
 def list_models():
-    """List all available Gemini models that support generateContent."""
     from google import genai
     from app.utils.constants import GEMINI_API_KEY
     try:
@@ -109,13 +111,11 @@ def list_models():
 
 @app.get("/test-gemini")
 def test_gemini():
-    """Test whether Gemini Vision API is reachable and within quota."""
     import base64
     from google import genai
     from google.genai import types
     from app.utils.constants import GEMINI_API_KEY, GEMINI_VISION_MODEL
 
-    # Tiny 1x1 white PNG — minimal API call to check quota
     ONE_PX_PNG = base64.b64decode(
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwADhQGAWjR9awAAAABJRU5ErkJggg=="
     )
