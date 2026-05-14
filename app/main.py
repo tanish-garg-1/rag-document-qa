@@ -1,3 +1,4 @@
+import sys
 import logging
 from collections import deque
 from fastapi import FastAPI
@@ -5,12 +6,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routes.upload import router as upload_router
 from app.routes.query import router as query_router
 
-# Basic logging setup
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+# ── App-level logging setup ───────────────────────────────────────────────────
+# Attach a StreamHandler directly to the "app" namespace logger so our pipeline
+# logs always appear in the terminal regardless of what uvicorn does to root.
+_fmt = logging.Formatter(
+    "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%H:%M:%S",
 )
+_console = logging.StreamHandler(sys.stderr)
+_console.setFormatter(_fmt)
+_console.setLevel(logging.DEBUG)
+
+_app_logger = logging.getLogger("app")   # covers app.*, app.routes.*, app.services.*
+_app_logger.setLevel(logging.INFO)
+_app_logger.addHandler(_console)
+_app_logger.propagate = False            # don't double-print through uvicorn root
 
 # ── In-memory log buffer (last 200 lines) — readable via /logs endpoint ───────
 class _BufferHandler(logging.Handler):
@@ -30,7 +40,7 @@ _buffer_handler.setFormatter(
     logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s",
                       datefmt="%H:%M:%S")
 )
-logging.getLogger().addHandler(_buffer_handler)
+_app_logger.addHandler(_buffer_handler)   # same "app" logger — in-memory + stderr
 
 logger = logging.getLogger(__name__)
 
